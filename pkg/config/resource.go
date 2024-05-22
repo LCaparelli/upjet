@@ -292,7 +292,13 @@ func (t *Tagger) Initialize(ctx context.Context, mg xpresource.Managed) error {
 	if err != nil {
 		return err
 	}
-	pavedByte, err := setExternalTagsWithPaved(xpresource.GetExternalTags(mg), paved, t.fieldName)
+
+	externalTags := xpresource.GetExternalTags(mg)
+	if externalName, ok := mg.GetAnnotations()[ExternalResourceTagKeyExternalName]; ok {
+		externalTags[ExternalResourceTagKeyExternalName] = externalName
+	}
+
+	pavedByte, err := setExternalTagsWithPaved(externalTags, paved, t.fieldName)
 	if err != nil {
 		return err
 	}
@@ -305,11 +311,14 @@ func (t *Tagger) Initialize(ctx context.Context, mg xpresource.Managed) error {
 	return nil
 }
 
+const ExternalResourceTagKeyExternalName = "crossplane.io/external-name"
+
 func setExternalTagsWithPaved(externalTags map[string]string, paved *fieldpath.Paved, fieldName string) ([]byte, error) {
 	tags := map[string]*string{
 		xpresource.ExternalResourceTagKeyKind:     ptr.To(externalTags[xpresource.ExternalResourceTagKeyKind]),
 		xpresource.ExternalResourceTagKeyName:     ptr.To(externalTags[xpresource.ExternalResourceTagKeyName]),
 		xpresource.ExternalResourceTagKeyProvider: ptr.To(externalTags[xpresource.ExternalResourceTagKeyProvider]),
+		ExternalResourceTagKeyExternalName:        ptr.To(externalTags[ExternalResourceTagKeyExternalName]),
 	}
 
 	if err := paved.SetValue(fmt.Sprintf("spec.forProvider.%s", fieldName), tags); err != nil {
